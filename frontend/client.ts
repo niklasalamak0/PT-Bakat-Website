@@ -144,6 +144,7 @@ import { updatePricing as api_company_update_pricing_updatePricing } from "~back
 import { updateService as api_company_update_service_updateService } from "~backend/company/update_service";
 import { updateTestimonial as api_company_update_testimonial_updateTestimonial } from "~backend/company/update_testimonial";
 import { uploadImage as api_company_upload_image_uploadImage } from "~backend/company/upload_image";
+import { uploadPortfolioImage as api_company_upload_portfolio_image_google_uploadPortfolioImage } from "~backend/company/upload_portfolio_image_google";
 
 export namespace company {
 
@@ -174,6 +175,7 @@ export namespace company {
             this.updateService = this.updateService.bind(this)
             this.updateTestimonial = this.updateTestimonial.bind(this)
             this.uploadImage = this.uploadImage.bind(this)
+            this.uploadPortfolioImage = this.uploadPortfolioImage.bind(this)
         }
 
         /**
@@ -340,7 +342,7 @@ export namespace company {
         }
 
         /**
-         * Submits a contact form and saves to Google Sheets.
+         * Submits a contact form and saves to DB and Google Sheets (Service Account).
          */
         public async submitContact(params: RequestType<typeof api_company_submit_contact_submitContact>): Promise<ResponseType<typeof api_company_submit_contact_submitContact>> {
             // Now make the actual call to the API
@@ -368,12 +370,15 @@ export namespace company {
         public async updatePortfolio(params: RequestType<typeof api_company_update_portfolio_updatePortfolio>): Promise<ResponseType<typeof api_company_update_portfolio_updatePortfolio>> {
             // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
             const body: Record<string, any> = {
+                alt:            params.alt,
                 category:       params.category,
                 clientName:     params.clientName,
                 completionDate: params.completionDate,
                 description:    params.description,
                 imageUrl:       params.imageUrl,
+                images:         params.images,
                 location:       params.location,
+                thumbnail:      params.thumbnail,
                 title:          params.title,
             }
 
@@ -444,7 +449,20 @@ export namespace company {
             const resp = await this.baseClient.callTypedAPI(`/upload-image`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_company_upload_image_uploadImage>
         }
+
+        /**
+         * Uploads an image to Google Drive (public) and returns URLs (orig + resized).
+         */
+        public async uploadPortfolioImage(params: RequestType<typeof api_company_upload_portfolio_image_google_uploadPortfolioImage>): Promise<ResponseType<typeof api_company_upload_portfolio_image_google_uploadPortfolioImage>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/admin/portfolio/upload`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_company_upload_portfolio_image_google_uploadPortfolioImage>
+        }
     }
+}
+
+
+export namespace integrations {
 }
 
 

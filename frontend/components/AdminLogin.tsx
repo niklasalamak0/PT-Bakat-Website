@@ -137,13 +137,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             </div>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials:</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div>Admin: username: <code>admin</code>, password: <code>admin123</code></div>
-              <div>Manager: username: <code>manager</code>, password: <code>manager123</code></div>
-            </div>
-          </div>
+          
         </CardContent>
       </Card>
     </div>
