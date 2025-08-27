@@ -35,6 +35,15 @@ export default function Header({ activeCategory, setActiveCategory }: HeaderProp
         {/* Main navbar */}
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
+            <img 
+              src="https://i.imgur.com/YourLogoURL.png" 
+              alt="PT. Bakti Karya Teknik Logo" 
+              className="h-10 w-auto"
+              onError={(e) => {
+                // Fallback if image fails to load
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="text-lg md:text-xl lg:text-2xl font-bold text-orange-600">
               PT. Bakti Karya Teknik
             </div>
