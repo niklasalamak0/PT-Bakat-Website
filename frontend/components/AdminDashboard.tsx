@@ -639,10 +639,31 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const { toast } = useToast();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file (JPG, PNG, GIF, etc.)",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onload = () => {
@@ -653,7 +674,14 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
   };
 
   const handleImageUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select an image file first",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async () => {
@@ -667,8 +695,17 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
         setFormData({ ...formData, imageUrl: result.imageUrl });
         setSelectedFile(null);
         setPreviewUrl('');
+        toast({
+          title: "Image uploaded successfully",
+          description: "You can now save the portfolio item"
+        });
       } catch (error) {
         console.error('Upload failed:', error);
+        toast({
+          title: "Upload failed",
+          description: "Please try again with a different image",
+          variant: "destructive"
+        });
       }
     };
     reader.readAsDataURL(selectedFile);
@@ -676,10 +713,22 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.imageUrl) {
+      toast({
+        title: "Image required",
+        description: "Please upload an image before saving the portfolio item",
+        variant: "destructive"
+      });
+      return;
+    }
+
     onSubmit(formData);
     setOpen(false);
     if (!isEdit) {
       setFormData({ title: '', description: '', category: 'advertising', imageUrl: '', clientName: '', completionDate: '', location: '' });
+      setSelectedFile(null);
+      setPreviewUrl('');
     }
   };
 
@@ -727,39 +776,72 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
             </Select>
           </div>
           <div>
-            <Label>Image</Label>
+            <Label>Image Upload (Required)</Label>
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  onClick={handleImageUpload}
-                  disabled={!selectedFile || isUploading}
-                  size="sm"
-                >
-                  {isUploading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4" />
-                  )}
-                </Button>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <div className="text-center">
+                  <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-2">
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="mt-2 block text-sm font-medium text-gray-900">
+                        Upload image from your device
+                      </span>
+                      <span className="mt-1 block text-xs text-gray-500">
+                        PNG, JPG, GIF up to 5MB
+                      </span>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={handleFileSelect}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
+              
+              {selectedFile && (
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-600">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleImageUpload}
+                    disabled={isUploading}
+                    className="w-full"
+                  >
+                    {isUploading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Image
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              
               {previewUrl && (
-                <img src={previewUrl} alt="Preview" className="w-full h-32 object-cover rounded" />
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-700">Preview:</div>
+                  <img src={previewUrl} alt="Preview" className="w-full h-32 object-cover rounded" />
+                </div>
               )}
+              
               {formData.imageUrl && !previewUrl && (
-                <img src={formData.imageUrl} alt="Current" className="w-full h-32 object-cover rounded" />
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-700">Current image:</div>
+                  <img src={formData.imageUrl} alt="Current" className="w-full h-32 object-cover rounded" />
+                  <div className="text-xs text-green-600">✓ Image uploaded successfully</div>
+                </div>
               )}
-              <Input
-                placeholder="Or enter image URL"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-              />
             </div>
           </div>
           <div>
@@ -790,7 +872,7 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
               required
             />
           </div>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={!formData.imageUrl}>
             {isEdit ? 'Update' : 'Create'} Portfolio
           </Button>
         </form>
