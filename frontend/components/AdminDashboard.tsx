@@ -81,22 +81,6 @@ export default function AdminDashboard({ user, token, onLogout }: AdminDashboard
     enabled: isVisible,
   });
 
-  // Image upload mutation
-  const uploadImageMutation = useMutation({
-    mutationFn: (data: any) => authenticatedBackend.company.uploadImage(data),
-    onSuccess: () => {
-      toast({ title: "Image uploaded successfully" });
-    },
-    onError: (error) => {
-      console.error('Image upload error:', error);
-      toast({ 
-        title: "Image upload failed", 
-        description: "Please try again with a smaller image.",
-        variant: "destructive" 
-      });
-    },
-  });
-
   // Service mutations
   const createServiceMutation = useMutation({
     mutationFn: (data: any) => authenticatedBackend.company.createService(data),
@@ -129,6 +113,14 @@ export default function AdminDashboard({ user, token, onLogout }: AdminDashboard
       queryClient.invalidateQueries({ queryKey: ['admin-portfolios'] });
       toast({ title: "Portfolio created successfully" });
     },
+    onError: (error) => {
+      console.error('Create portfolio error:', error);
+      toast({ 
+        title: "Portfolio creation failed", 
+        description: "Please try again.",
+        variant: "destructive" 
+      });
+    },
   });
 
   const updatePortfolioMutation = useMutation({
@@ -136,6 +128,14 @@ export default function AdminDashboard({ user, token, onLogout }: AdminDashboard
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-portfolios'] });
       toast({ title: "Portfolio updated successfully" });
+    },
+    onError: (error) => {
+      console.error('Update portfolio error:', error);
+      toast({ 
+        title: "Portfolio update failed", 
+        description: "Please try again.",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -334,8 +334,7 @@ export default function AdminDashboard({ user, token, onLogout }: AdminDashboard
                 <h3 className="text-lg font-semibold">Manage Portfolios</h3>
                 <PortfolioForm 
                   onSubmit={createPortfolioMutation.mutate} 
-                  uploadImage={uploadImageMutation.mutate}
-                  isUploading={uploadImageMutation.isPending}
+                  authenticatedBackend={authenticatedBackend}
                 />
               </div>
               <div className="grid gap-4">
@@ -362,8 +361,7 @@ export default function AdminDashboard({ user, token, onLogout }: AdminDashboard
                           <PortfolioForm 
                             portfolio={portfolio} 
                             onSubmit={(data) => updatePortfolioMutation.mutate({ ...data, id: portfolio.id })}
-                            uploadImage={uploadImageMutation.mutate}
-                            isUploading={uploadImageMutation.isPending}
+                            authenticatedBackend={authenticatedBackend}
                             isEdit
                           />
                           <Button
@@ -626,7 +624,7 @@ function ServiceForm({ service, onSubmit, isEdit = false }: any) {
   );
 }
 
-function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit = false }: any) {
+function PortfolioForm({ portfolio, onSubmit, authenticatedBackend, isEdit = false }: any) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: portfolio?.title || '',
@@ -639,6 +637,7 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -683,32 +682,59 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = reader.result as string;
-      try {
-        const result = await uploadImage({
-          fileName: selectedFile.name,
-          fileData: base64Data,
-          contentType: selectedFile.type,
-        });
-        setFormData({ ...formData, imageUrl: result.imageUrl });
-        setSelectedFile(null);
-        setPreviewUrl('');
+    setIsUploading(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result as string;
+          const result = await authenticatedBackend.company.uploadImage({
+            fileName: selectedFile.name,
+            fileData: base64Data,
+            contentType: selectedFile.type,
+          });
+          
+          if (result.success) {
+            setFormData({ ...formData, imageUrl: result.imageUrl });
+            setSelectedFile(null);
+            setPreviewUrl('');
+            toast({
+              title: "Image uploaded successfully",
+              description: "You can now save the portfolio item"
+            });
+          } else {
+            throw new Error('Upload failed');
+          }
+        } catch (error) {
+          console.error('Upload failed:', error);
+          toast({
+            title: "Upload failed",
+            description: "Please try again with a different image",
+            variant: "destructive"
+          });
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.onerror = () => {
+        setIsUploading(false);
         toast({
-          title: "Image uploaded successfully",
-          description: "You can now save the portfolio item"
-        });
-      } catch (error) {
-        console.error('Upload failed:', error);
-        toast({
-          title: "Upload failed",
-          description: "Please try again with a different image",
+          title: "File read error",
+          description: "Failed to read the selected file",
           variant: "destructive"
         });
-      }
-    };
-    reader.readAsDataURL(selectedFile);
+      };
+      reader.readAsDataURL(selectedFile);
+    } catch (error) {
+      setIsUploading(false);
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -872,7 +898,7 @@ function PortfolioForm({ portfolio, onSubmit, uploadImage, isUploading, isEdit =
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={!formData.imageUrl}>
+          <Button type="submit" className="w-full" disabled={!formData.imageUrl || isUploading}>
             {isEdit ? 'Update' : 'Create'} Portfolio
           </Button>
         </form>
