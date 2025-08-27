@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Phone, Mail } from 'lucide-react';
+import { Menu, X, Phone, Mail, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
 export default function Header({ activeCategory, setActiveCategory }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,16 +35,19 @@ export default function Header({ activeCategory, setActiveCategory }: HeaderProp
       <div className="container mx-auto px-4">
         {/* Main navbar */}
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-4">
-            <img 
-              src="https://i.imgur.com/YourLogoURL.png" 
-              alt="PT. Bakti Karya Teknik Logo" 
-              className="h-10 w-auto"
-              onError={(e) => {
-                // Fallback if image fails to load
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+          <div className="flex items-center space-x-3">
+            {!logoError ? (
+              <img 
+                src="https://via.placeholder.com/40x40/f97316/ffffff?text=BKT" 
+                alt="PT. Bakti Karya Teknik Logo" 
+                className="h-10 w-10 rounded-lg object-cover"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <div className="h-10 w-10 bg-orange-600 rounded-lg flex items-center justify-center">
+                <Building2 className="h-6 w-6 text-white" />
+              </div>
+            )}
             <div className="text-lg md:text-xl lg:text-2xl font-bold text-orange-600">
               PT. Bakti Karya Teknik
             </div>
