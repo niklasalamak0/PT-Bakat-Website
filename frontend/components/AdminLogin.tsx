@@ -54,7 +54,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           size="sm"
         >
           <Lock className="w-4 h-4 mr-2" />
-          Admin Login
+          
         </Button>
       </div>
     );
