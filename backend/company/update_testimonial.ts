@@ -1,6 +1,7 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { companyDB } from "./db";
+import { updateRowInSection } from "../integrations/sync";
 
 export interface UpdateTestimonialRequest {
   id: number;
@@ -21,7 +22,7 @@ export const updateTestimonial = api<UpdateTestimonialRequest, UpdateTestimonial
   async (req) => {
     const auth = getAuthData()!;
     if (auth.role !== "admin") {
-      throw new Error("Insufficient permissions");
+      throw new APIError("permissionDenied", "Insufficient permissions");
     }
 
     await companyDB.exec`
@@ -31,6 +32,20 @@ export const updateTestimonial = api<UpdateTestimonialRequest, UpdateTestimonial
           project_type = ${req.projectType}
       WHERE id = ${req.id}
     `;
+
+    try {
+      await updateRowInSection("testimonials", req.id, {
+        clientName: req.clientName,
+        company: req.company,
+        rating: String(req.rating),
+        comment: req.comment,
+        projectType: req.projectType,
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.userID,
+      });
+    } catch (err) {
+      console.error("updateRowInSection(testimonials) failed:", err);
+    }
 
     return { success: true };
   }

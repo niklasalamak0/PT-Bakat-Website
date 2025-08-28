@@ -1,6 +1,7 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { companyDB } from "./db";
+import { deleteRowInSection } from "../integrations/sync";
 
 export interface DeleteServiceRequest {
   id: number;
@@ -16,10 +17,16 @@ export const deleteService = api<DeleteServiceRequest, DeleteServiceResponse>(
   async (req) => {
     const auth = getAuthData()!;
     if (auth.role !== "admin") {
-      throw new Error("Insufficient permissions");
+      throw new APIError("permissionDenied", "Insufficient permissions");
     }
 
     await companyDB.exec`DELETE FROM services WHERE id = ${req.id}`;
+
+    try {
+      await deleteRowInSection("services", req.id);
+    } catch (err) {
+      console.error("deleteRowInSection(services) failed:", err);
+    }
     return { success: true };
   }
 );

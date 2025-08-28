@@ -10,6 +10,11 @@ export interface Portfolio {
   clientName: string;
   completionDate: string;
   location: string;
+  // New fields
+  images?: string[]; // parsed from JSON column
+  thumbnail?: string | null;
+  alt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface GetPortfoliosParams {
@@ -34,7 +39,11 @@ export const getPortfolios = api<GetPortfoliosParams, GetPortfoliosResponse>(
         image_url as "imageUrl", 
         client_name as "clientName", 
         completion_date as "completionDate", 
-        location 
+        location,
+        images,
+        thumbnail,
+        alt,
+        updated_at as "updatedAt"
       FROM portfolios
     `;
     const queryParams: any[] = [];
@@ -51,7 +60,29 @@ export const getPortfolios = api<GetPortfoliosParams, GetPortfoliosResponse>(
       queryParams.push(params.limit);
     }
 
-    const portfolios = await companyDB.rawQueryAll<Portfolio>(query, ...queryParams);
+    const rows = await companyDB.rawQueryAll<any>(query, ...queryParams);
+    const portfolios: Portfolio[] = rows.map((r) => {
+      let imgs: string[] | undefined;
+      try {
+        imgs = r.images ? JSON.parse(r.images) : undefined;
+      } catch {
+        imgs = undefined;
+      }
+      return {
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        category: r.category,
+        imageUrl: r.imageUrl,
+        clientName: r.clientName,
+        completionDate: r.completionDate,
+        location: r.location,
+        images: imgs,
+        thumbnail: r.thumbnail ?? null,
+        alt: r.alt ?? null,
+        updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : null,
+      };
+    });
     return { portfolios };
   }
 );

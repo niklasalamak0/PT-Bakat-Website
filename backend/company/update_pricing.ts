@@ -1,6 +1,7 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { companyDB } from "./db";
+import { updateRowInSection } from "../integrations/sync";
 
 export interface UpdatePricingRequest {
   id: number;
@@ -21,7 +22,7 @@ export const updatePricing = api<UpdatePricingRequest, UpdatePricingResponse>(
   async (req) => {
     const auth = getAuthData()!;
     if (auth.role !== "admin") {
-      throw new Error("Insufficient permissions");
+      throw new APIError("permissionDenied", "Insufficient permissions");
     }
 
     await companyDB.exec`
@@ -31,6 +32,20 @@ export const updatePricing = api<UpdatePricingRequest, UpdatePricingResponse>(
           is_popular = ${req.isPopular}
       WHERE id = ${req.id}
     `;
+
+    try {
+      await updateRowInSection("pricing", req.id, {
+        name: req.name,
+        category: req.category,
+        priceRange: req.priceRange,
+        features: JSON.stringify(req.features),
+        isPopular: req.isPopular ? "true" : "false",
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.userID,
+      });
+    } catch (err) {
+      console.error("updateRowInSection(pricing) failed:", err);
+    }
 
     return { success: true };
   }

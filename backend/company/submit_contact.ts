@@ -1,8 +1,6 @@
 import { api } from "encore.dev/api";
 import { companyDB } from "./db";
-import { secret } from "encore.dev/config";
-
-const googleApiKey = secret("GoogleApiKey");
+import { appendRowToSection } from "../integrations/sync";
 
 export interface SubmitContactRequest {
   name: string;
@@ -17,48 +15,31 @@ export interface SubmitContactResponse {
   message: string;
 }
 
-// Submits a contact form and saves to Google Sheets.
+// Submits a contact form and saves to DB and Google Sheets (Service Account).
 export const submitContact = api<SubmitContactRequest, SubmitContactResponse>(
   { expose: true, method: "POST", path: "/contact" },
   async (req) => {
     // Save to database
-    await companyDB.exec`
+    const row = await companyDB.queryRow<{ id: number }>`
       INSERT INTO contact_submissions (name, email, phone, service_type, message)
       VALUES (${req.name}, ${req.email}, ${req.phone}, ${req.serviceType}, ${req.message})
+      RETURNING id
     `;
 
-    // Save to Google Sheets
+    // Save to Google Sheets (best-effort)
     try {
-      const spreadsheetId = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"; // Replace with your spreadsheet ID
-      const range = "Sheet1!A:F";
-      
-      const values = [[
-        new Date().toISOString(),
-        req.name,
-        req.email,
-        req.phone,
-        req.serviceType,
-        req.message
-      ]];
-
-      const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&key=${googleApiKey()}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            values: values,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to save to Google Sheets:", await response.text());
-      }
-    } catch (error) {
-      console.error("Error saving to Google Sheets:", error);
+      await appendRowToSection("contact", {
+        id: row!.id,
+        name: req.name,
+        email: req.email,
+        phone: req.phone,
+        serviceType: req.serviceType,
+        message: req.message,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("appendRowToSection(contact) failed:", err);
       // Don't fail the request if Google Sheets fails
     }
 

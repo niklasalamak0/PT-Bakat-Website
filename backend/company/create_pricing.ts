@@ -1,6 +1,7 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { companyDB } from "./db";
+import { appendRowToSection } from "../integrations/sync";
 
 export interface CreatePricingRequest {
   name: string;
@@ -21,7 +22,7 @@ export const createPricing = api<CreatePricingRequest, CreatePricingResponse>(
   async (req) => {
     const auth = getAuthData()!;
     if (auth.role !== "admin") {
-      throw new Error("Insufficient permissions");
+      throw new APIError("permissionDenied", "Insufficient permissions");
     }
 
     const result = await companyDB.queryRow<{ id: number }>`
@@ -30,8 +31,26 @@ export const createPricing = api<CreatePricingRequest, CreatePricingResponse>(
       RETURNING id
     `;
 
+    const id = result!.id;
+
+    try {
+      await appendRowToSection("pricing", {
+        id,
+        name: req.name,
+        category: req.category,
+        priceRange: req.priceRange,
+        features: JSON.stringify(req.features),
+        isPopular: req.isPopular ? "true" : "false",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.userID,
+      });
+    } catch (err) {
+      console.error("appendRowToSection(pricing) failed:", err);
+    }
+
     return {
-      id: result!.id,
+      id,
       success: true,
     };
   }
