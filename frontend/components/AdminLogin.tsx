@@ -8,16 +8,13 @@ import { useToast } from '@/components/ui/use-toast';
 import backend from '~backend/client';
 
 interface AdminLoginProps {
-  onLogin: (user: any, token: string) => void;
+  onLogin: (user: any, token: string) => void; // parent simpan & pasang token ke client
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ username: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -26,18 +23,26 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     setIsLoading(true);
 
     try {
+      // panggil endpoint login (auth: false)
       const response = await backend.auth.login(formData);
+      // simpan token untuk dipakai parent (set ke client dengan Authorization Bearer)
       onLogin(response.user, response.token);
+      // opsional: persist
+      localStorage.setItem('adm_t', response.token);
+
       setIsVisible(false);
       toast({
         title: "Login Successful",
         description: `Welcome back, ${response.user.username}!`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: "Invalid username or password. Please try again.",
+        description:
+          (error?.message || "").includes("Invalid credentials")
+            ? "Invalid username or password."
+            : "Unable to login. Please check server logs & AdminSecret.",
         variant: "destructive",
       });
     } finally {
@@ -54,7 +59,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           size="sm"
         >
           <Lock className="w-4 h-4 mr-2" />
-          
+          Admin
         </Button>
       </div>
     );
@@ -72,7 +77,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             <div>
               <Label htmlFor="username">Username</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   id="username"
                   type="text"
@@ -84,11 +89,11 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -101,7 +106,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -136,8 +141,6 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               </Button>
             </div>
           </form>
-
-          
         </CardContent>
       </Card>
     </div>

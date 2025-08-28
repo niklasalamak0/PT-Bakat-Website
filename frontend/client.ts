@@ -108,9 +108,6 @@ export namespace auth {
             this.login = this.login.bind(this)
         }
 
-        /**
-         * Admin login endpoint.
-         */
         public async login(params: RequestType<typeof api_auth_login_login>): Promise<ResponseType<typeof api_auth_login_login>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/auth/login`, {method: "POST", body: JSON.stringify(params)})
